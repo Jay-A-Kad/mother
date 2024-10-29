@@ -47,7 +47,8 @@ def load_sprites(sprite_sheet_path, coords, flip_sprites=False):
         surface = pygame.Surface((width, height), pygame.SRCALPHA, 32)
         rect = pygame.Rect(x, y, width, height)
         surface.blit(sprite_sheet, (0, 0), rect)
-        sprites.append(pygame.transform.scale2x(surface))
+        scaled_surface = pygame.transform.scale(surface, (width // 1.5, height // 1.5))  # Scale down by 1.5
+        sprites.append(scaled_surface)
     if flip_sprites:
         return sprites, flip(sprites)
     return sprites
@@ -128,8 +129,8 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.sprite.get_rect(topleft=(self.rect.x , self.rect.y))
         self.mask = pygame.mask.from_surface(self.sprite)
 
-    def draw(self, win):
-        win.blit(self.sprite, (self.rect.x, self.rect.y))
+    def draw(self, win, offset_x):
+        win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
 
 class Object(pygame.sprite.Sprite):
     def __init__(self, x, y, width, height, name=None):
@@ -140,8 +141,8 @@ class Object(pygame.sprite.Sprite):
         self.height = height
         self.name = name
 
-    def draw(self, win):
-        win.blit(self.image, (self.rect.x, self.rect.y))
+    def draw(self, win , offset_x):
+        win.blit(self.image, (self.rect.x - offset_x, self.rect.y))
 
 
 class Block(Object):
@@ -177,9 +178,9 @@ def handle_move(player, objects):
 
     handle_vertical_collision(player,objects, player.y_vel)
 
-def draw(window , objects):
+def draw(window , objects, offset_x):
     for obj in objects:
-        obj.draw(window)
+        obj.draw(window, offset_x)
 
 
 def main(screen):
@@ -188,7 +189,9 @@ def main(screen):
     floor = [Block(i * block_size, HEIGHT - block_size + 50, block_size)
              for i in range(-WIDTH // block_size, (WIDTH * 2) // block_size)]
     background = Background()
-    player = Player(100, 100, 32, 32)
+    player = Player(100, 100, 24, 24)
+    offset_x = 0
+    scroll_area_width = 200
 
     run = True
     while run:
@@ -200,9 +203,14 @@ def main(screen):
 
         player.loop(FPS)
         handle_move(player, floor)        
-        background.draw(screen)
-        player.draw(screen)
-        draw(screen ,floor)
+        background.draw(screen, offset_x)
+        player.draw(screen, offset_x)
+        draw(screen ,floor, offset_x)
+
+        if((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel >0) or (
+            (player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
+            offset_x += player.x_vel
+
 
         # Update the display
         pygame.display.flip()
